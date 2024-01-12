@@ -146,6 +146,10 @@ class TaiSan(Base):
     # n-n relationships
     ban_ghi_kiem_kes = relationship("BanGhiKiemKe", secondary=ban_ghi_kiem_ke_tai_san_association, back_populates="tai_sans")
 
+
+
+all_models = [obj for obj in globals().values() if isinstance(obj, type) and issubclass(obj, Base) and obj != Base]
+
 """
 # One-to-one
 class Citizen(Base):

@@ -75,6 +75,7 @@ class CRUD_Base:
     @crud_handler_wrapper
     def create(cls, **kwargs) -> Tuple[CRUD_Status, any]:
         new_instance = cls.model(**kwargs)
+        print(new_instance)
         session.add(new_instance)
         return CRUD_Status.CREATED, new_instance
 
@@ -148,6 +149,15 @@ class CRUD_LichSuKiemKe(CRUD_Base):
 
 class CRUD_BanGhiKiemKe(CRUD_Base):
     model = BanGhiKiemKe
+
+def get_crud_class(model_class)->CRUD_Base:
+    # Assuming that the CRUD classes are defined in the same module
+    crud_class_name = f"CRUD_{model_class.__name__}"
+
+    # Use globals() to get the class from the global namespace
+    crud_class = globals().get(crud_class_name)
+
+    return crud_class
 
 
 class BanGhiKiemKeState(Enum):

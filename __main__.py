@@ -38,23 +38,18 @@ from PyQt6.QtGui import (
 """ Backend """
 # Database
 
-TEST_DEV = True
+TEST_DEV = False
+
+
 def resetAllTaiSan():
     status, tai_sans = CRUD_TaiSan.read_all()
     for tai_san in tai_sans:
         CRUD_TaiSan.update(id=tai_san.id,
-                            ghi_chu=BanGhiKiemKeState.NOT_AVAILABLE.value)
+                           ghi_chu=BanGhiKiemKeState.NOT_AVAILABLE.value)
 
 # if TEST_DEV:
     # resetAllTaiSan()
 
-""" Paths """
-icon_search_path = "Frontend/Resources/Bootstrap/search.png"
-icon_options_path = "Frontend/Resources/Bootstrap/sliders.png"
-icon_home_path = "Frontend/Resources/Bootstrap/house-fill.png"
-icon_back_path = "Frontend/Resources/Bootstrap/arrow-left.png"
-icon_x_path = "Frontend/Resources/Bootstrap/x-lg.png"
-icon_qr_code_path = "Frontend/Resources/Bootstrap/qr-code.png"
 
 
 class PageRoomsInfoMode(Enum):
@@ -77,7 +72,7 @@ class MyApplication(QMainWindow):
 
         # Connect signals and slots
         self.ui.pushButton_Login.clicked.connect(self.login)
-        
+
         """ Page Rooms """
         self.ui.pushButton_Rooms.clicked.connect(self.toPageRooms)
         self.ui.pushButton_RoomSearch.clicked.connect(
@@ -92,13 +87,17 @@ class MyApplication(QMainWindow):
             "background-color: rgba(255, 255, 255, 128);")
         self.ui.frame_RoomSearchOptions.setVisible(False)
         """ Page Rooms """
-        """ Pagge Room Info """
+        """ Page Room Info """
         self.ui.pushButton_RoomInfo_Home.clicked.connect(self.toPageMainMenu)
         self.ui.pushButton_RoomInfo_Back.clicked.connect(
             self.toPageRooms)
-        """ Pagge Room Info """
+        """ Page Room Info """
+        """ Page Database """
+        self.ui.pushButton_Database.clicked.connect(self.toPageDatabase)
+        """ Page Database """
         """ Page CreateQR """
-        self.ui.frame_CreateQR.layout().addWidget(Widget_CreateQR(parent=self.ui.frame_CreateQR))
+        self.ui.frame_CreateQR.layout().addWidget(
+            Widget_CreateQR(parent=self.ui.frame_CreateQR))
         self.ui.pushButton_ToPageCreateQR.clicked.connect(self.toPageCreateQR)
         self.ui.pushButton_CreateQR_Home.clicked.connect(self.toPageMainMenu)
         self.ui.pushButton_CreateQR_Back.clicked.connect(
@@ -126,10 +125,14 @@ class MyApplication(QMainWindow):
             QIcon(QPixmap(icon_home_path)))
         self.ui.pushButton_RoomInfo_Back.setIcon(
             QIcon(QPixmap(icon_back_path)))
+        self.ui.pushButton_RoomInfo_Refresh.setIcon(
+            QIcon(QPixmap(icon_refresh_path)))
         """ Page RoomInfo """
         """ Page CreateQR """
-        self.ui.pushButton_CreateQR_Home.setIcon(QIcon(QPixmap(icon_home_path)))
-        self.ui.pushButton_CreateQR_Back.setIcon(QIcon(QPixmap(icon_back_path)))
+        self.ui.pushButton_CreateQR_Home.setIcon(
+            QIcon(QPixmap(icon_home_path)))
+        self.ui.pushButton_CreateQR_Back.setIcon(
+            QIcon(QPixmap(icon_back_path)))
         """ Page CreateQR """
 
     # Define functions
@@ -201,6 +204,69 @@ class MyApplication(QMainWindow):
             print(phong.ten)
         """
 
+    def toPageDatabase(self):
+        self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
+        parent = self.ui.scrollAreaWidgetContents_List
+        parent_layout = parent.layout()
+        clearAllWidgets(parent)
+        models = all_models
+        widget_database = Widget_Database(parent=parent,
+                                          models=models,
+                                          callback_back=self.toPageMainMenu,
+                                          callback_select_table=self.toPageDatabase_Table)
+        parent_layout.addWidget(widget_database)
+
+    def toPageDatabase_Table(self, model):
+        self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
+        parent = self.ui.scrollAreaWidgetContents_List
+        parent_layout = parent.layout()
+        clearAllWidgets(parent)
+        widget_table = Widget_Database_Table(parent=parent,
+                                    model=model,
+                                    callback_back=self.toPageDatabase,
+                                    callback_create=self.toPageDatabase_Table_CreateData,
+                                    callback_read=self.toPageDatabase_Table_Read,
+                                    callback_update=None,
+                                    callback_delete=None)
+        parent_layout.addWidget(widget_table)
+    
+    def toPageDatabase_Table_Read(self, obj):
+        self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
+        parent = self.ui.scrollAreaWidgetContents_List
+        parent_layout = parent.layout()
+        clearAllWidgets(parent)
+        widget_create = Widget_ReadUpdateDelete(parent=parent,
+                                      obj=obj,
+                                      callback_back=self.toPageDatabase_Table,
+                                      callback_cancel=self.toPageDatabase_Table,
+                                      callback_update=None,
+                                      callback_delete=None)
+        
+        parent_layout.addWidget(widget_create)
+
+    def toPageDatabase_Table_CreateData(self, model):
+        self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
+        parent = self.ui.scrollAreaWidgetContents_List
+        parent_layout = parent.layout()
+        clearAllWidgets(parent)
+        widget_create = Widget_Create(parent=parent,
+                                      model=model,
+                                      callback_back=self.toPageDatabase_Table,
+                                      callback_cancel=self.toPageDatabase_Table,
+                                      callback_create=self.createData)
+        
+        parent_layout.addWidget(widget_create)
+        
+    def createData(self, model, **kwargs):
+        CRUD_Model = get_crud_class(model_class=model)
+        status, result = CRUD_Model.create(**kwargs)
+        print(status, result)
+        if status == CRUD_Status.CREATED:
+            self.toPageDatabase_Table(model=model)
+
+    def toPageDatabase_Table_Data(self, data):
+        pass
+
     def onClicked_pushButton_RoomSearchOptions(self):
         is_visible = self.ui.frame_RoomSearchOptions.isVisible()
         self.ui.frame_RoomSearchOptions.setVisible(not is_visible)
@@ -223,6 +289,10 @@ class MyApplication(QMainWindow):
     """ Page Room info """
 
     def toPageRoomInfo(self, phong):
+        qpushbutton_clicked_disconnect(self.ui.pushButton_RoomInfo_Refresh)
+        self.ui.pushButton_RoomInfo_Refresh.clicked.connect(
+            lambda: self.renderViewRoomInfo_DanhMuc(phong=phong)
+        )
         parent = self.ui.frame_RoomInfo
         clearAllWidgets(parent_widget=parent)
         self.ui.stackedWidget.setCurrentWidget(self.ui.page_RoomInfo)
@@ -236,7 +306,6 @@ class MyApplication(QMainWindow):
             self.ui.pushButton_RoomInfo_DanhMuc)
         self.ui.pushButton_RoomInfo_DanhMuc.clicked.connect(
             lambda: self.renderViewRoomInfo_DanhMuc(phong=phong))
-        
 
     def renderViewRoomInfo_Info(self, phong):
         qpushbutton_clicked_disconnect(self.ui.pushButton_RoomInfo_Back)
@@ -268,9 +337,13 @@ class MyApplication(QMainWindow):
                                       phong=phong,
                                       callback_DetailButton=self.renderViewRoomInfo_DanhMuc_Detail)
         parent_layout.addWidget(table_DanhMuc)
-        
 
     def renderViewRoomInfo_DanhMuc_Detail(self, phong: Phong, loai_tai_san: LoaiTaiSan, tai_san_list: List[TaiSan]):
+        qpushbutton_clicked_disconnect(self.ui.pushButton_RoomInfo_Refresh)
+        self.ui.pushButton_RoomInfo_Refresh.clicked.connect(
+            lambda: self.renderViewRoomInfo_DanhMuc_Detail(
+                phong=phong, loai_tai_san=loai_tai_san, tai_san_list=tai_san_list)
+        )
         qpushbutton_clicked_disconnect(self.ui.pushButton_RoomInfo_Back)
         self.ui.pushButton_RoomInfo_Back.clicked.connect(
             partial(self.renderViewRoomInfo_DanhMuc, phong=phong))
@@ -288,6 +361,7 @@ class MyApplication(QMainWindow):
         parent_layout.addWidget(table_DanhMuc_Detail)
 
     """ Page Room info """
+
 
 def qpushbutton_clicked_disconnect(button: QPushButton):
     try:
