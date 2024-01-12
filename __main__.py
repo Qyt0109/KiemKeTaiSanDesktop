@@ -104,7 +104,7 @@ class MyApplication(QMainWindow):
         """ Page CreateQR """
 
         # Full screen
-        self.showFullScreen()
+        # self.showFullScreen()
         if TEST_DEV:
             self.toPageMainMenu()
 
@@ -225,9 +225,45 @@ class MyApplication(QMainWindow):
                                     callback_back=self.toPageDatabase,
                                     callback_create=self.toPageDatabase_Table_CreateData,
                                     callback_read=self.toPageDatabase_Table_Read,
-                                    callback_update=None,
-                                    callback_delete=None)
+                                    callback_update=self.toPageDatabase_Table_Update,
+                                    callback_delete=self.toPageDatabase_Table_Delete)
         parent_layout.addWidget(widget_table)
+    
+    def toPageDatabase_Table_Delete(self, obj):
+        self.deleteData(obj)
+
+    def toPageDatabase_Table_Update(self, obj):
+        self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
+        parent = self.ui.scrollAreaWidgetContents_List
+        parent_layout = parent.layout()
+        clearAllWidgets(parent)
+        widget_update = Widget_ReadUpdateDelete(parent=parent,
+                                      obj=obj,
+                                      callback_back=self.toPageDatabase_Table,
+                                      callback_cancel=self.toPageDatabase_Table,
+                                      callback_update=self.updateData,
+                                      callback_delete=self.deleteData)
+        
+        parent_layout.addWidget(widget_update)
+
+    def deleteData(self, obj):
+        model = type(obj)
+        CRUD_Model = get_crud_class(model_class=model)
+        status, result = CRUD_Model.delete(id=obj.id)
+        print(status, result)
+        if status != CRUD_Status.DELETED:
+            return
+        self.toPageDatabase_Table(model=model)
+    
+    def updateData(self, obj, **kwargs):
+        model = type(obj)
+        CRUD_Model = get_crud_class(model_class=model)
+        status, result = CRUD_Model.update(id=obj.id,
+                                           **kwargs)
+        print(status, result)
+        if status != CRUD_Status.UPDATED:
+            return
+        self.toPageDatabase_Table(model=model)
     
     def toPageDatabase_Table_Read(self, obj):
         self.ui.stackedWidget.setCurrentWidget(self.ui.page_List)
@@ -260,8 +296,9 @@ class MyApplication(QMainWindow):
         CRUD_Model = get_crud_class(model_class=model)
         status, result = CRUD_Model.create(**kwargs)
         print(status, result)
-        if status == CRUD_Status.CREATED:
-            self.toPageDatabase_Table(model=model)
+        if status != CRUD_Status.CREATED:
+            return
+        self.toPageDatabase_Table(model=model)
 
     def toPageDatabase_Table_Data(self, data):
         pass

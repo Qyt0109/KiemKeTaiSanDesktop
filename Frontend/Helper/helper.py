@@ -471,6 +471,15 @@ class Widget_Database_Table(QWidget):
                 col, QHeaderView.ResizeMode.Stretch)
         table_widget.horizontalHeader().setSectionResizeMode(
             column_count - 1, QHeaderView.ResizeMode.ResizeToContents)
+
+        # Find the index of the column with the header "id"
+        header_labels = [table_widget.horizontalHeaderItem(
+            i).text() for i in range(table_widget.columnCount())]
+        id_column_index = header_labels.index("id")
+
+        # Hide the "id" column
+        table_widget.setColumnHidden(id_column_index, True)
+
         table_widget.setSortingEnabled(True)
         table_widget.resizeColumnsToContents()
         table_widget.resizeRowsToContents()
@@ -484,16 +493,21 @@ class Widget_Database_Table(QWidget):
             return
         self.callback_read(obj=obj)
 
-    def update_button_clicked(self):
+    def update_button_clicked(self, id):
         if not self.callback_update:
             return
-        obj = get_crud_class(self.model).read(id)
+        status, obj = get_crud_class(self.model).read(id)
+        if status != CRUD_Status.FOUND:
+            return
         self.callback_update(obj=obj)
 
-    def delete_button_clicked(self):
+    def delete_button_clicked(self, id):
         if not self.callback_delete:
             return
-        obj = get_crud_class(self.model).read(id)
+        status, obj = get_crud_class(self.model).read(id)
+        print(status, obj)
+        if status != CRUD_Status.FOUND:
+            return
         self.callback_delete(obj=obj)
 
     def back_button_clicked(self):
@@ -508,17 +522,20 @@ class Widget_Database_Table(QWidget):
 
 # Assuming you have a function to populate the table, you can replace this with your actual implementation
 
+
 def get_id_for_row(table_widget, row):
     header_labels = [table_widget.horizontalHeaderItem(col).text()
                      for col in range(table_widget.columnCount())]
 
-    id_column_index = header_labels.index("id") if "id" in header_labels else -1
+    id_column_index = header_labels.index(
+        "id") if "id" in header_labels else -1
 
     if id_column_index != -1:
         id_item = table_widget.item(row, id_column_index)
         if id_item:
             return int(id_item.text())
     return None
+
 
 def populate_table(table_widget, model):
     # Retrieve all instances of the model from the database
@@ -530,7 +547,17 @@ def populate_table(table_widget, model):
     # Populate the table with data
     for row, instance in enumerate(instances):
         for col, column in enumerate(model.__table__.columns):
-            item = QTableWidgetItem(str(getattr(instance, column.name)))
+            if column.foreign_keys:
+                # If the column is a foreign key, get the related instance
+                foreign_key_instance_id = getattr(instance, column.name)
+                related_model = list(column.foreign_keys)[0].column.table
+                related_instance = session.query(related_model).filter_by(
+                    id=foreign_key_instance_id).first()
+                item_text = str(related_instance)
+            else:
+                item_text = str(getattr(instance, column.name))
+
+            item = QTableWidgetItem(item_text)
             table_widget.setItem(row, col, item)
 
 
@@ -570,7 +597,7 @@ class Widget_ReadUpdateDelete(QWidget):
         frame_buttons_layout.addWidget(pushButton_Back)
         self.layout.addWidget(frame_buttons)
         # Get the mapped class and its properties using inspect
-        mapper = inspect(type(self.obj))
+        mapper = inspect(self.model)
 
         for column in mapper.columns:
             # Skip the 'id' column or any other columns you want to exclude
@@ -586,7 +613,7 @@ class Widget_ReadUpdateDelete(QWidget):
                 combobox.addItem("None", None)
                 # Add all instances
                 related_model = session.query(
-                    column.foreign_keys.pop().column.table).all()
+                    list(column.foreign_keys)[0].column.table).all()
 
                 for instance in related_model:
                     combobox.addItem(
@@ -606,6 +633,8 @@ class Widget_ReadUpdateDelete(QWidget):
                 self.line_edits[column.name] = line_edit_input
                 self.layout.addWidget(line_edit_input)
 
+        print(self.line_edits)
+        print(self.comboboxes)
         spacer_widget = QWidget(parent=self)
         spacer_widget.setSizePolicy(QSizePolicy.Policy.Expanding,
                                     QSizePolicy.Policy.Expanding)
@@ -644,14 +673,17 @@ class Widget_ReadUpdateDelete(QWidget):
             line_edit.setReadOnly(True)
 
         for combobox in self.comboboxes.values():
+            combobox.show()
             combobox.setEditable(True)
             combobox.lineEdit().setReadOnly(True)
 
     def cancel_button_clicked(self):
         if self.callback_cancel:
-            self.callback_cancel()
+            self.callback_cancel(model=self.model)
 
     def update_button_clicked(self):
+        if not self.callback_update:
+            return
         # Update the model object with user input
         for name, line_edit in self.line_edits.items():
             setattr(self.obj,
@@ -665,12 +697,14 @@ class Widget_ReadUpdateDelete(QWidget):
 
         model_values = {name: getattr(self.obj, name, None)
                         for name in self.line_edits.keys()}
-        if self.callback_update:
-            self.callback_update(id=self.obj.id, **model_values)
+        self.callback_update(obj=self.obj,
+                             **model_values)
 
     def delete_button_clicked(self):
-        if self.callback_delete:
-            self.callback_delete(id=self.obj.id)
+        if not self.callback_delete:
+            return
+        self.callback_delete(obj=self.obj)
+
 
 class Widget_Create(QWidget):
     def __init__(self, parent: QWidget, model: Base, callback_back=None, callback_cancel=None, callback_create=None) -> None:
