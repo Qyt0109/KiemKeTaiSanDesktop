@@ -1,5 +1,4 @@
 from Backend.Database.db_sessions import *
-from Backend.Services.Scanner.fake_scanner import *
 from Frontend.Helper.helper import *
 from Frontend.Design.design_ui import Ui_MainWindow
 from collections import defaultdict
