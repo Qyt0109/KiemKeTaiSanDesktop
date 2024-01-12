@@ -1,2 +1,3 @@
 .VenvMacos
 *.pyc
+Backend/Database/connection_string.py

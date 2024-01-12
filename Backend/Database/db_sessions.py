@@ -6,12 +6,17 @@ from Backend.Database.connection_string import connection_password
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
+import platform
+
 db_type = 'mysql'
 db_connector_module = 'pymysql'
 db_host = 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com'
 db_port = '4000'
 db_username = '3xKs6MSRB2UKUd5.root'
-db_ssl_ca_path = '/etc/ssl/cert.pem'
+if platform.system() == "Windows":
+    db_ssl_ca_path = 'C:/cer.pem' # https://letsencrypt.org/certs/isrgrootx1.pem
+else:
+    db_ssl_ca_path = '/etc/ssl/cert.pem'
 db_password = connection_password
 
 # Create an SQLite engine
