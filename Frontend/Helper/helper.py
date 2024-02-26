@@ -312,7 +312,7 @@ class Widget_CreateQR(QWidget):
         self.text_input = QLineEdit()
         self.generate_button = QPushButton('Generate QR Code')
         self.generate_button.clicked.connect(self.generate_qr_code)
-
+        
         # Set up the layout
         layout = QHBoxLayout(self)
         layout.addWidget(self.label)

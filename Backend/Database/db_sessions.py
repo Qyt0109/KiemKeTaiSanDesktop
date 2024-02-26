@@ -20,7 +20,7 @@ else:
 db_password = connection_password
 
 # Create an SQLite engine
-ECHO = False
+ECHO = True
 TEST_DB = False
 if TEST_DB:
     connection_string_url = 'sqlite:///Backend/Database/db.sqlite'
